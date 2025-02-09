@@ -154,7 +154,7 @@ int write_to_ofile(struct assembler_state *state)
 	return 0;
 }
 
-size_t fill_ibuffer(char *ibuffer, size_t ib_len, FILE *ifile)
+size_t fill_ibuffer(char *ibuffer, size_t ib_len, FILE *ifile, struct assembler_state *state)
 {
 	char *itr = ibuffer;
 	int read_char = 0;
@@ -164,6 +164,7 @@ size_t fill_ibuffer(char *ibuffer, size_t ib_len, FILE *ifile)
 		switch(read_char)
 		{
 			case EOF:
+				state->mgmt_flags |= 0x10;
 			case '\n':
 				*itr = 0;
 				return itr - ibuffer;
@@ -183,7 +184,7 @@ void close_tempfile(struct assembler_state *state)
 	if(fclose(state->tempfile))
 	{
 		fprintf(stderr, WARN_MSG "Failed to close temp file.\n Retry?(y/n): ");
-		fill_ibuffer(state->ibuffer, 2, stdin);
+		fill_ibuffer(state->ibuffer, 2, stdin, state);
 		if(state->ibuffer[0] == 'y' | state->ibuffer[0] == 'Y')
 		{
 			goto tempfile_close_retry;
@@ -401,6 +402,7 @@ int main(size_t nargs, char **args)
 		0x2: Alternate input specified
 		0x4: Assembled this pass
 		0x8: Next argument read
+		0x10: EOF encountered
 	*/
 	state.mgmt_flags = 0x0;
 	/*
@@ -645,7 +647,7 @@ int main(size_t nargs, char **args)
 	//DEBUG_DELIM fprintf(stdout, "mode: %x, mgmt_flags: %x, ib_len: %lu, cb_len: %lu, ibuffer: %p, cbuffer: %p, altfile_n_buffer: %s\n", state.mode, state.mgmt_flags, state.ib_len, state.cb_len, state.ibuffer, state.cbuffer, state.altfile_n_buffer);
 	//----------
 
-	while(1)
+	while(1 & !(state.mgmt_flags & 0x10))
 	{
 		if(state.tempfile == NULL)
 		{
@@ -657,7 +659,7 @@ int main(size_t nargs, char **args)
 			}
 		}
 		fprintf(stdout, "\n%s", state.prompt);
-		fill_ibuffer(state.ibuffer, state.ib_len, state.ifile);
+		fill_ibuffer(state.ibuffer, state.ib_len, state.ifile, &state);
 
 		char *iitr = state.ibuffer;
 		char *citr = state.cbuffer;
@@ -704,6 +706,14 @@ int main(size_t nargs, char **args)
 		{
 			state.mgmt_flags &= (~0x4);
 		}
+	}
+	if(remove(state.tempfile_n))
+	{
+		fprintf(stderr, WARN_MSG "Failed to remove tempfile\n");
+	}
+	if(remove(state.altfile_n_buffer))
+	{
+		fprintf(stderr, WARN_MSG "Failed to remove altfile\n");
 	}
 
 	exit(0);
