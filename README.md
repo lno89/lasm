@@ -1,6 +1,6 @@
 LASM, Line Assembler
 ====================
-<sup><sub>by lno89/flash-computer(same guy I just forgot the email I used to make the first one lol)
+<sup><sub>by lno89
 
 I really don't know what else to say.
 
